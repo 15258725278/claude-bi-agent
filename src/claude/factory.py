@@ -2,10 +2,14 @@
 Claude 会话工厂 - 基于官方文档简化版
 """
 import asyncio
+import shutil
 from typing import Optional, Dict, Any
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 from src.config import settings
 from src.claude.prompts import get_default_system_prompt
+
+# 查找本地 Claude Code CLI
+LOCAL_CLAUDE_CLI = shutil.which('claude')
 
 
 class ClaudeSessionFactory:
@@ -30,10 +34,14 @@ class ClaudeSessionFactory:
         Returns:
             ClaudeSDKClient 实例
         """
+        # 使用本地已配置的 Claude Code
+        # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
             system_prompt=system_prompt or get_default_system_prompt(),
             permission_mode=settings.CLAUDE_PERMISSION_MODE,
             max_turns=settings.CLAUDE_MAX_TURNS,
+            model=settings.CLAUDE_MODEL,
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
         )
 
         # 创建客户端
@@ -59,11 +67,15 @@ class ClaudeSessionFactory:
         Returns:
             ClaudeSDKClient 实例
         """
+        # 使用本地已配置的 Claude Code
+        # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
             system_prompt=system_prompt or get_default_system_prompt(),
             permission_mode=settings.CLAUDE_PERMISSION_MODE,
             max_turns=settings.CLAUDE_MAX_TURNS,
             resume=claude_session_id,
+            model=settings.CLAUDE_MODEL,
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
         )
 
         # 创建客户端并恢复会话
@@ -117,11 +129,15 @@ class ClaudeSessionManager:
         session_id: Optional[str] = None
     ) -> ClaudeSDKClient:
         """创建新会话"""
+        # 使用本地已配置的 Claude Code
+        # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
             system_prompt=get_default_system_prompt(),
             permission_mode=settings.CLAUDE_PERMISSION_MODE,
             max_turns=settings.CLAUDE_MAX_TURNS,
             resume=session_id,
+            model=settings.CLAUDE_MODEL,
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
         )
 
         # 创建客户端

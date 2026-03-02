@@ -43,16 +43,25 @@ Thumbs.db
 
 # 日志
 *.log
+logs/
+/tmp/*.log
 
 # 数据库
 *.db
 *.sqlite
 *.sqlite3
+data/
 
 # 测试
 .pytest_cache/
 .coverage
 htmlcov/
+test_*.py
+
+# 临时和开发文件
+.claude/
+OPTIMIZATION_*.md
+start_long_connection.py
 
 # Docker
 Dockerfile

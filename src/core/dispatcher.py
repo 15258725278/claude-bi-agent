@@ -31,6 +31,7 @@ class MessageDispatcher:
     async def dispatch(
         self,
         user_id: str,
+        open_id: str,
         message_id: str,
         content: str,
         message: dict
@@ -40,6 +41,7 @@ class MessageDispatcher:
 
         Args:
             user_id: 用户ID
+            open_id: 用户OpenID（用于发送消息，避免权限问题）
             message_id: 消息ID
             content: 消息内容
             message: 完整消息对象
@@ -49,9 +51,9 @@ class MessageDispatcher:
             error = await self.message_handler.handle_user_message(user_id, message)
 
             if error:
-                # 发送错误提示给用户
+                # 发送错误提示给用户（使用 open_id）
                 await self.feishu_client.send_message(
-                    user_id=user_id,
+                    user_id=open_id,
                     content=f"抱歉，处理您的请求时出错了：{error}"
                 )
 
@@ -59,13 +61,14 @@ class MessageDispatcher:
             import traceback
             traceback.print_exc()
             await self.feishu_client.send_message(
-                user_id=user_id,
+                user_id=open_id,
                 content=f"抱歉，系统出现错误，请稍后重试。"
             )
 
     async def dispatch_card_action(
         self,
         user_id: str,
+        open_id: str,
         card_id: str,
         action_tag: Optional[str],
         form_values: Optional[dict]
@@ -75,6 +78,7 @@ class MessageDispatcher:
 
         Args:
             user_id: 用户ID
+            open_id: 用户OpenID（用于发送消息，避免权限问题）
             card_id: 卡片ID
             action_tag: 操作标签
             form_values: 表单值
@@ -87,7 +91,7 @@ class MessageDispatcher:
 
             if error:
                 await self.feishu_client.send_message(
-                    user_id=user_id,
+                    user_id=open_id,
                     content=f"处理卡片交互失败：{error}"
                 )
 

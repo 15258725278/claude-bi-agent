@@ -3,8 +3,7 @@
 """
 from lark_oapi import Client
 from lark_oapi.api.im.v1 import (
-    CreateMessageRequest, CreateMessageRequestBody,
-    create_message_request, create_message_request_body
+    CreateMessageRequest, CreateMessageRequestBody
 )
 from typing import Optional
 import json
@@ -25,11 +24,11 @@ class FeishuClient:
         content: str,
         message_type: str = "text"
     ) -> dict:
-        """发送消息"""
-        request = create_message_request.builder() \
-            .receive_id_type("user_id") \
+        """发送消息（使用 open_id 避免 user_id 权限问题）"""
+        request = CreateMessageRequest.builder() \
+            .receive_id_type("open_id") \
             .request_body(
-                create_message_request_body.builder()
+                CreateMessageRequestBody.builder()
                 .receive_id(user_id)
                 .msg_type(message_type)
                 .content(json.dumps({"text": content}))
@@ -50,11 +49,11 @@ class FeishuClient:
         card: dict,
         root_id: Optional[str] = None
     ) -> dict:
-        """发送卡片"""
-        builder = create_message_request.builder() \
-            .receive_id_type("user_id") \
+        """发送卡片（使用 open_id 避免 user_id 权限问题）"""
+        builder = CreateMessageRequest.builder() \
+            .receive_id_type("open_id") \
             .request_body(
-                create_message_request_body.builder()
+                CreateMessageRequestBody.builder()
                 .receive_id(user_id)
                 .msg_type("interactive")
                 .content(json.dumps(card))
@@ -81,3 +80,7 @@ class FeishuClient:
         """更新卡片"""
         # TODO: 实现卡片更新功能，需要使用 lark_oapi.api.cardkit.v1
         raise NotImplementedError("卡片更新功能待实现")
+
+    async def send_ack_emoji(self, user_id: str) -> dict:
+        """发送确认表情（表示正在处理）"""
+        return await self.send_message(user_id=user_id, content="👌")
