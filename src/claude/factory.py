@@ -3,6 +3,7 @@ Claude 会话工厂 - 基于官方文档简化版
 """
 import asyncio
 import shutil
+import os
 from typing import Optional, Dict, Any
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 from src.config import settings
@@ -10,6 +11,9 @@ from src.claude.prompts import get_default_system_prompt
 
 # 查找本地 Claude Code CLI
 LOCAL_CLAUDE_CLI = shutil.which('claude')
+
+# 技能目录
+SKILLS_DIR = "/root/.claude/skills"
 
 
 class ClaudeSessionFactory:
@@ -34,6 +38,9 @@ class ClaudeSessionFactory:
         Returns:
             ClaudeSDKClient 实例
         """
+        # 构建技能配置
+        skills_config = self._get_skills_config()
+
         # 使用本地已配置的 Claude Code
         # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
@@ -41,7 +48,8 @@ class ClaudeSessionFactory:
             permission_mode=settings.CLAUDE_PERMISSION_MODE,
             max_turns=settings.CLAUDE_MAX_TURNS,
             model=settings.CLAUDE_MODEL,
-            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
+            **skills_config
         )
 
         # 创建客户端
@@ -51,6 +59,28 @@ class ClaudeSessionFactory:
         await client.connect()
 
         return client
+
+    def _get_skills_config(self) -> Dict[str, Any]:
+        """获取技能配置"""
+        skills_config = {}
+
+        # 检查技能目录是否存在
+        if os.path.exists(SKILLS_DIR):
+            # 业务背景知识技能
+            business_skill = os.path.join(SKILLS_DIR, "业务背景知识")
+            if os.path.exists(business_skill):
+                skills_config["skills"] = [business_skill]
+
+            # 数据仓库元数据技能
+            warehouse_skill = os.path.join(SKILLS_DIR, "数据仓库元数据")
+            if os.path.exists(warehouse_skill):
+                # 如果已设置 skills，则追加
+                if "skills" in skills_config:
+                    skills_config["skills"].append(warehouse_skill)
+                else:
+                    skills_config["skills"] = [warehouse_skill]
+
+        return skills_config
 
     async def resume_session(
         self,
@@ -67,6 +97,9 @@ class ClaudeSessionFactory:
         Returns:
             ClaudeSDKClient 实例
         """
+        # 构建技能配置
+        skills_config = self._get_skills_config()
+
         # 使用本地已配置的 Claude Code
         # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
@@ -75,7 +108,8 @@ class ClaudeSessionFactory:
             max_turns=settings.CLAUDE_MAX_TURNS,
             resume=claude_session_id,
             model=settings.CLAUDE_MODEL,
-            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
+            **skills_config
         )
 
         # 创建客户端并恢复会话
@@ -129,6 +163,9 @@ class ClaudeSessionManager:
         session_id: Optional[str] = None
     ) -> ClaudeSDKClient:
         """创建新会话"""
+        # 构建技能配置
+        skills_config = self._get_skills_config()
+
         # 使用本地已配置的 Claude Code
         # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
@@ -137,7 +174,8 @@ class ClaudeSessionManager:
             max_turns=settings.CLAUDE_MAX_TURNS,
             resume=session_id,
             model=settings.CLAUDE_MODEL,
-            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None
+            cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
+            **skills_config
         )
 
         # 创建客户端
