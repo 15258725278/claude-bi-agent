@@ -125,8 +125,8 @@ async def get_dependencies():
 # 创建FastAPI应用
 app = FastAPI(
     title=settings.APP_NAME,
-    version="2.0.0",
-    description="飞书 + Claude SDK 智能对话服务（简化版）",
+    version="3.0.0",
+    description="屈臣氏 BI 数据分析智能助手",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -164,7 +164,7 @@ async def startup_event():
     """应用启动事件"""
     global long_connection_client, feishu_tools_manager, claude_session_manager
 
-    logger.info(f"应用启动: {settings.APP_NAME} v2.0.0")
+    logger.info(f"应用启动: {settings.APP_NAME} v3.0.0")
     logger.info(f"环境: {settings.APP_ENV}")
     logger.info(f"飞书应用ID: {settings.FEISHU_APP_ID}")
     logger.info("开始执行 startup_event...")
