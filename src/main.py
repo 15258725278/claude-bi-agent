@@ -169,6 +169,12 @@ async def startup_event():
     logger.info(f"飞书应用ID: {settings.FEISHU_APP_ID}")
     logger.info("开始执行 startup_event...")
 
+    # 初始化数据库表
+    from src.storage import init_db
+    logger.info("初始化数据库表...")
+    await init_db()
+    logger.info("数据库表初始化完成")
+
     # 创建依赖
     logger.info("创建依赖...")
     from src.storage import AsyncSessionLocal, SessionRepository, WaitingContextRepository
