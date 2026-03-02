@@ -43,7 +43,8 @@ class ClaudeSessionFactory:
             model=settings.CLAUDE_MODEL,
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
-            allowed_tools=["Skill"]  # 启用技能工具
+            allowed_tools=["Skill"],  # 启用技能工具
+            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
         )
 
         # 创建客户端
@@ -79,7 +80,8 @@ class ClaudeSessionFactory:
             model=settings.CLAUDE_MODEL,
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
-            allowed_tools=["Skill"]  # 启用技能工具
+            allowed_tools=["Skill"],  # 启用技能工具
+            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
         )
 
         # 创建客户端并恢复会话
@@ -143,7 +145,8 @@ class ClaudeSessionManager:
             model=settings.CLAUDE_MODEL,
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
-            allowed_tools=["Skill"]  # 启用技能工具
+            allowed_tools=["Skill"],  # 启用技能工具
+            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
         )
 
         # 创建客户端

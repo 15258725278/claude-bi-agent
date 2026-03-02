@@ -1,12 +1,13 @@
-# 飞书 + Claude SDK 智能对话服务
+# 屈臣氏 BI 数据分析智能助手
 
-> 通过飞书机器人接收用户消息，使用 Claude SDK 智能处理需求，支持多轮对话和消息确认反馈。
+> 基于飞书 + Claude SDK 的 BI 数据分析智能助手，支持业务背景知识查询、数据仓库元数据查询、销售数据分析等功能。
 
 ## 项目特性
 
 - ✅ **实时响应**：接收消息后立即发送 👌 表情确认，后台异步处理
 - ✅ **长连接支持**：通过独立进程实现飞书 WebSocket 长连接
 - ✅ **智能对话**：基于 Claude SDK 的多轮对话能力
+- ✅ **Skills 系统**：支持业务背景知识、数据仓库元数据等技能渐进式加载
 - ✅ **open_id 优化**：使用 open_id 代替 user_id，避免权限问题
 - ✅ **多用户并发**：支持多用户同时使用
 - ✅ **异步处理**：Webhook 快速响应，后台任务处理
@@ -19,9 +20,10 @@
 | **Web框架** | FastAPI | 0.104+ | 异步支持优秀，自动API文档 |
 | **飞书SDK** | lark-oapi | 1.5.3 | 官方Python SDK，功能完整 |
 | **飞书模式** | 长连接（WebSocket） | - | 实时消息推送，无需轮询 |
-| **Claude SDK** | claude-agent-sdk | v0.1.39+ | 官方SDK，支持多轮对话 |
+| **Claude SDK** | claude-agent-sdk | v0.1.39+ | 官方SDK，支持Skills、多轮对话 |
 | **Claude模型** | glm-4.7 | - | 国内可用模型 |
-| **数据库** | SQLite（内存/文件可选）| 3.44+ | 简单部署，事务支持 |
+| **Skills** | 本地SKILL.md | - | 业务背景知识、数据仓库元数据 |
+| **数据库** | SQLite（aiosqlite）| 3.44+ | 简单部署，异步支持 |
 
 ## 架构说明
 
@@ -38,11 +40,18 @@
                             +-------+-------+
                             |               |
                       Session Manager  Claude SDK
-                      +---------------+
+                      +---------------+       |
+                                    |       |
+                                    v       v
+                            +-------------------+
+                            |  Skills  (用户)   |
+                            |  - 业务背景知识   |
+                            |  - 数仓元数据    |
+                            +-------------------+
                                     |
                                     v
                             +---------------+
-                            | SQLite / Redis |
+                            |   SQLite     |
                             +---------------+
 ```
 
@@ -66,8 +75,9 @@
 2. 长连接服务 → 主服务 (HTTP POST /api/v1/webhook/*)
 3. 主服务 → 立即返回"处理中" + 发送 👌 表情
 4. 主服务 → Claude SDK (后台任务)
-5. Claude SDK → 主服务 (响应)
-6. 主服务 → 飞书平台 (HTTP API 发送消息)
+5. Claude SDK → Skills 加载 (根据需要加载业务背景知识、数仓元数据)
+6. Claude SDK → 主服务 (响应)
+7. 主服务 → 飞书平台 (HTTP API 发送消息)
 
 ## 项目结构
 
@@ -80,16 +90,19 @@ src/
 │       └── webhook.py          # Webhook端点
 ├── core/                      # 核心业务层
 │   ├── session_manager.py      # 会话管理器
-│   └── dispatcher.py          # 事件分发器
+│   ├── demand_detector.py      # 需求检测器
+│   └── context.py            # 上下文管理器
 ├── claude/                    # Claude SDK集成
-│   └── factory.py             # Claude会话工厂
+│   ├── factory.py             # Claude会话工厂
+│   └── prompts.py            # 系统提示词
 ├── feishu/                    # 飞书集成
 │   ├── client.py              # 飞书客户端
 │   └── long_connection_service.py  # 长连接服务
 ├── models/                    # 数据模型
 ├── storage/                   # 存储层
-│   ├── redis_client.py        # Redis客户端
-│   └── repository.py        # 数据仓库
+│   ├── database.py           # 数据库连接
+│   ├── repository.py        # 数据仓库
+│   └── redis_client.py      # Redis客户端
 ├── utils/                     # 工具函数
 │   └── logger.py             # 日志工具
 └── middleware/                # 中间件
@@ -147,6 +160,35 @@ docker-compose up
 启动后访问：
 - Swagger UI: http://localhost:8000/docs
 - ReDoc UI: http://localhost:8000/redoc
+
+## Skills 配置
+
+项目支持 Claude Skills 系统，用于加载业务知识和技能。
+
+### 可用技能
+
+1. **业务背景知识**
+   - 位置：`~/.claude/skills/业务背景知识/SKILL.md`
+   - 功能：屈臣氏业务概览、销售数据分析、用户行为分析、营销运营分析
+   - 参考：包含会员等级、渠道标签、时间周期等业务术语
+
+2. **数据仓库元数据**
+   - 位置：`~/.claude/skills/数据仓库元数据/SKILL.md`
+   - 功能：数仓架构、表结构、字段定义、开发规范
+
+### 配置技能
+
+将技能文件放置在 `~/.claude/skills/` 目录下，SDK 会自动加载。
+
+### 技能参数配置
+
+```python
+options = ClaudeAgentOptions(
+    setting_sources=["user"],      # 从 ~/.claude/skills/ 加载用户技能
+    allowed_tools=["Skill"],       # 启用技能工具
+    add_dirs=["/root/.claude/skills"],  # 允许访问技能参考文件
+)
+```
 
 ## 关键实现说明
 
