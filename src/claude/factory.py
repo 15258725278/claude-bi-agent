@@ -130,26 +130,23 @@ class ClaudeSessionManager:
         self._lock = asyncio.Lock()
 
     def _get_skills_config(self) -> Dict[str, Any]:
-        """获取技能配置"""
-        skills_config = {}
+        """获取技能配置（MCP服务器格式）"""
+        mcp_servers_config = {}
 
         # 检查技能目录是否存在
         if os.path.exists(SKILLS_DIR):
             # 业务背景知识技能
             business_skill = os.path.join(SKILLS_DIR, "业务背景知识")
             if os.path.exists(business_skill):
-                skills_config["skills"] = [business_skill]
+                mcp_servers_config["feishu"] = {"path": business_skill, "name": "业务背景知识"}
 
             # 数据仓库元数据技能
             warehouse_skill = os.path.join(SKILLS_DIR, "数据仓库元数据")
             if os.path.exists(warehouse_skill):
-                # 如果已设置 skills，则追加
-                if "skills" in skills_config:
-                    skills_config["skills"].append(warehouse_skill)
-                else:
-                    skills_config["skills"] = [warehouse_skill]
+                # 数据仓库技能配置
+                mcp_servers_config["warehouse"] = {"path": warehouse_skill, "name": "数据仓库元数据"}
 
-        return skills_config
+        return {"mcp_servers": mcp_servers_config}
 
     async def get_or_create_session(
         self,
