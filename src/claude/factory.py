@@ -1,0 +1,165 @@
+"""
+Claude 会话工厂 - 基于官方文档简化版
+"""
+import asyncio
+from typing import Optional, Dict, Any
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+from src.config import settings
+from src.claude.prompts import get_default_system_prompt
+
+
+class ClaudeSessionFactory:
+    """Claude 会话工厂"""
+
+    def __init__(self):
+        """初始化工厂"""
+        pass
+
+    async def create_session(
+        self,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None
+    ) -> ClaudeSDKClient:
+        """
+        创建新的 Claude 会话
+
+        Args:
+            system_prompt: 系统提示词，None 则使用默认
+            session_id: 恢复会话时使用的 Claude 内部会话 ID
+
+        Returns:
+            ClaudeSDKClient 实例
+        """
+        options = ClaudeAgentOptions(
+            system_prompt=system_prompt or get_default_system_prompt(),
+            permission_mode=settings.CLAUDE_PERMISSION_MODE,
+            max_turns=settings.CLAUDE_MAX_TURNS,
+        )
+
+        # 创建客户端
+        client = ClaudeSDKClient(options=options)
+
+        # 连接（不带初始消息）
+        await client.connect()
+
+        return client
+
+    async def resume_session(
+        self,
+        claude_session_id: str,
+        system_prompt: Optional[str] = None
+    ) -> ClaudeSDKClient:
+        """
+        恢复现有的 Claude 会话
+
+        Args:
+            claude_session_id: 之前保存的 Claude 内部会话 ID
+            system_prompt: 系统提示词，None 则使用默认
+
+        Returns:
+            ClaudeSDKClient 实例
+        """
+        options = ClaudeAgentOptions(
+            system_prompt=system_prompt or get_default_system_prompt(),
+            permission_mode=settings.CLAUDE_PERMISSION_MODE,
+            max_turns=settings.CLAUDE_MAX_TURNS,
+            resume=claude_session_id,
+        )
+
+        # 创建客户端并恢复会话
+        client = ClaudeSDKClient(options=options)
+
+        # 连接时不发送任何消息
+        await client.connect()
+
+        return client
+
+
+class ClaudeSessionManager:
+    """Claude 会话管理器 - 简化版
+
+    管理多个并发的 Claude 会话实例
+    """
+
+    def __init__(self):
+        """初始化管理器"""
+        self._sessions: Dict[str, ClaudeSDKClient] = {}
+        self._lock = asyncio.Lock()
+
+    async def get_or_create_session(
+        self,
+        session_key: str,
+        resume_session_id: Optional[str] = None
+    ) -> ClaudeSDKClient:
+        """
+        获取或创建会话
+
+        Args:
+            session_key: 会话键（user_id:root_id）
+            resume_session_id: 恢复的会话 ID（可选）
+
+        Returns:
+            ClaudeSDKClient 实例
+        """
+        async with self._lock:
+            # 如果会话已存在且未关闭，返回现有会话
+            if session_key in self._sessions:
+                return self._sessions[session_key]
+
+            # 创建新会话
+            client = await self._create_session(session_id=resume_session_id)
+
+            self._sessions[session_key] = client
+            return client
+
+    async def _create_session(
+        self,
+        session_id: Optional[str] = None
+    ) -> ClaudeSDKClient:
+        """创建新会话"""
+        options = ClaudeAgentOptions(
+            system_prompt=get_default_system_prompt(),
+            permission_mode=settings.CLAUDE_PERMISSION_MODE,
+            max_turns=settings.CLAUDE_MAX_TURNS,
+            resume=session_id,
+        )
+
+        # 创建客户端
+        client = ClaudeSDKClient(options=options)
+
+        # 连接
+        await client.connect()
+
+        return client
+
+    async def close_session(self, session_key: str) -> None:
+        """关闭会话"""
+        async with self._lock:
+            if session_key in self._sessions:
+                client = self._sessions.pop(session_key)
+                try:
+                    await client.disconnect()
+                except Exception as e:
+                    # 忽略关闭错误，会话已经被移除
+                    pass
+
+    async def close_all(self) -> None:
+        """关闭所有会话"""
+        async with self._lock:
+            tasks = []
+            for session_key, client in self._sessions.items():
+                tasks.append(asyncio.create_task(client.disconnect()))
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            self._sessions.clear()
+
+    async def get_session_info(self, session_key: str) -> Optional[dict]:
+        """获取会话信息"""
+        if session_key in self._sessions:
+            client = self._sessions[session_key]
+            if client:
+                return {
+                    "session_key": session_key,
+                    "state": "active"
+                }
+        return None

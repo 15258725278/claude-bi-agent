@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_PORT=8000
+      - APP_HOST=0.0.0.0
+      # 数据库配置
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/feishu_claude
+      - DATABASE_ECHO=false
+      # Redis配置
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_CACHE_TTL=3600
+      # Claude配置（使用智谱AI兼容接口）
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-glm-4.7}
+      # 飞书配置
+      - FEISHU_APP_ID=${FEISHU_APP_ID}
+      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+      - FEISHU_ENCRYPT_KEY=${FEISHU_ENCRYPT_KEY}
+      - FEISHU_VERIFICATION_TOKEN=${FEISHU_VERIFICATION_TOKEN}
+      # 安全配置
+      - SECRET_KEY=${SECRET_KEY}
+      # 日志配置
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=feishu_claude
+      - POSTGRES_USER=ai01agent
+      - POSTGRES_PASSWORD=ai01agent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
