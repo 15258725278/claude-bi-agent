@@ -65,7 +65,7 @@ class MessageHandler:
             if not claude_client:
                 # 检查会话是否过期
                 session_db = await self.session_repository.get_by_key(session_key)
-                if session_db and session_db.state == SessionState.EXPIRED:
+                if session_db and session_db.state == EXPIRED:
                     return "会话已过期，请重新发起"
 
                 return "Claude会话�失败"

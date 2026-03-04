@@ -7,115 +7,137 @@ from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Session, Message, Card, WaitingContext
 from src.storage.memory_store import redis_client, get_session_key, get_waiting_key
-from src.config import settings, SessionState
+from src.storage.database import AsyncSessionLocal
+from src.config import settings, ACTIVE, EXPIRED
 
 
 class SessionRepository:
-    """会话仓库"""
+    """会话仓库 - 每次方法调用时创建新会话"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, db: Optional[AsyncSession] = None):
+        # 支持传入会话对象（向后兼容），但不在构造函数中使用
+        pass
+
+    async def _get_session(self) -> AsyncSession:
+        """获取新的数据库会话"""
+        return AsyncSessionLocal()
 
     async def create(self, session: Session) -> Session:
         """创建会话"""
-        self.db.add(session)
-        await self.db.commit()
-        await self.db.refresh(session)
-        return session
+        async with self._get_session() as db:
+            db.add(session)
+            await db.commit()
+            await db.refresh(session)
+            return session
 
     async def get_by_key(self, session_key: str) -> Optional[Session]:
         """根据键获取会话"""
-        result = await self.db.execute(
-            select(Session).where(Session.session_key == session_key)
-        )
-        return result.scalars().first()
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session).where(Session.session_key == session_key)
+            )
+            return result.scalars().first()
 
     async def get_by_root_id(self, user_id: str, root_id: str) -> Optional[Session]:
         """根据用户ID和根消息ID获取会话"""
-        result = await self.db.execute(
-            select(Session).where(
-                and_(Session.user_id == user_id, Session.root_id == root_id)
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session).where(
+                    and_(Session.user_id == user_id, Session.root_id == root_id)
+                )
             )
-        )
-        return result.scalars().first()
+            return result.scalars().first()
 
     async def get_by_card_id(self, card_id: str) -> Optional[Session]:
         """根据卡片ID获取会话"""
-        result = await self.db.execute(
-            select(Session).where(Session.card_id == card_id)
-        )
-        return result.scalars().first()
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session).where(Session.card_id == card_id)
+            )
+            return result.scalars().first()
 
     async def get_user_sessions(self, user_id: str, limit: int = 10) -> List[Session]:
         """获取用户的所有会话"""
-        result = await self.db.execute(
-            select(Session)
-            .where(Session.user_id == user_id)
-            .order_by(Session.updated_at.desc())
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session)
+                .where(Session.user_id == user_id)
+                .order_by(Session.updated_at.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
 
     async def update(self, session: Session) -> Session:
         """更新会话"""
-        session.updated_at = datetime.now()
-        await self.db.commit()
-        await self.db.refresh(session)
-        return session
-
-    async def update_state(self, session_key: str, state: SessionState) -> None:
-        """更新会话状态"""
-        result = await self.db.execute(
-            select(Session).where(Session.session_key == session_key)
-        )
-        session = result.scalars().first()
-        if session:
-            session.state = state
+        async with self._get_session() as db:
             session.updated_at = datetime.now()
-            await self.db.commit()
+            db.add(session)
+            await db.commit()
+            await db.refresh(session)
+            return session
+
+    async def update_state(self, session_key: str, state: str) -> None:
+        """更新会话状态"""
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session).where(Session.session_key == session_key)
+            )
+            session = result.scalars().first()
+            if session:
+                session.state = state
+                session.updated_at = datetime.now()
+                await db.commit()
 
     async def delete(self, session_key: str) -> bool:
         """删除会话"""
-        result = await self.db.execute(
-            select(Session).where(Session.session_key == session_key)
-        )
-        session = result.scalars().first()
-        if session:
-            await self.db.delete(session)
-            await self.db.commit()
-            return True
-        return False
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Session).where(Session.session_key == session_key)
+            )
+            session = result.scalars().first()
+            if session:
+                await db.delete(session)
+                await db.commit()
+                return True
+            return False
 
     async def cleanup_expired(self) -> int:
         """清理过期会话"""
-        now = datetime.now()
-        result = await self.db.execute(
-            select(Session).where(
-                and_(
-                    Session.expires_at.isnot(None),
-                    Session.expires_at < now
+        async with self._get_session() as db:
+            now = datetime.now()
+            result = await db.execute(
+                select(Session).where(
+                    and_(
+                        Session.expires_at.isnot(None),
+                        Session.expires_at < now
+                    )
                 )
             )
-        )
-        sessions = list(result.scalars().all())
-        for session in sessions:
-            session.state = SessionState.EXPIRED
-        await self.db.commit()
-        return len(sessions)
+            sessions = list(result.scalars().all())
+            for session in sessions:
+                session.state = EXPIRED
+            await db.commit()
+            return len(sessions)
 
 
 class MessageRepository:
-    """消息仓库"""
+    """消息仓库 - 每次方法调用时创建新会话"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, db: Optional[AsyncSession] = None):
+        # 支持传入会话对象（向后兼容），但不在构造函数中使用
+        pass
+
+    async def _get_session(self) -> AsyncSession:
+        """获取新的数据库会话"""
+        return AsyncSessionLocal()
 
     async def create(self, message: Message) -> Message:
         """创建消息"""
-        self.db.add(message)
-        await self.db.commit()
-        await self.db.refresh(message)
-        return message
+        async with self._get_session() as db:
+            db.add(message)
+            await db.commit()
+            await db.refresh(message)
+            return message
 
     async def get_by_session_key(
         self,
@@ -123,13 +145,14 @@ class MessageRepository:
         limit: int = 50
     ) -> List[Message]:
         """获取会话的所有消息"""
-        result = await self.db.execute(
-            select(Message)
-            .where(Message.session_key == session_key)
-            .order_by(Message.created_at.asc())
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+        async with self._get_session() as db:
+            result = await db.execute(
+                select(Message)
+                .where(Message.session_key == session_key)
+                .order_by(Message.created_at.asc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
 
 
 class WaitingContextRepository:

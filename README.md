@@ -12,6 +12,9 @@
 - ✅ **多用户并发**：支持多用户同时使用
 - ✅ **异步处理**：Webhook 快速响应，后台任务处理
 - ✅ **完善日志**：结构化日志记录，便于问题排查
+- ✅ **群聊支持**：支持群聊普通问答和需求管理模式（v3.1.0+）
+- ✅ **话题功能**：创建独立话题，保持需求上下文隔离（v3.1.0+）
+- ✅ **消息过滤**：只处理@机器人的消息，避免干扰（v3.1.0+）
 
 ## 技术栈
 
@@ -83,29 +86,34 @@
 
 ```
 src/
-├── main.py                    # 应用入口
-├── config/                    # 配置管理
-├── api/                       # API层
+├── main.py                        # 应用入口
+├── config/                        # 配置管理
+├── api/                           # API层
 │   └── v1/
-│       └── webhook.py          # Webhook端点
-├── core/                      # 核心业务层
-│   ├── session_manager.py      # 会话管理器
-│   ├── demand_detector.py      # 需求检测器
-│   └── context.py            # 上下文管理器
-├── claude/                    # Claude SDK集成
-│   ├── factory.py             # Claude会话工厂
-│   └── prompts.py            # 系统提示词
-├── feishu/                    # 飞书集成
-│   ├── client.py              # 飞书客户端
-│   └── long_connection_service.py  # 长连接服务
-├── models/                    # 数据模型
-├── storage/                   # 存储层
-│   ├── database.py           # 数据库连接
-│   ├── repository.py        # 数据仓库
-│   └── redis_client.py      # Redis客户端
-├── utils/                     # 工具函数
-│   └── logger.py             # 日志工具
-└── middleware/                # 中间件
+│       └── webhook.py              # Webhook端点
+├── core/                          # 核心业务层
+│   ├── session_manager.py          # 会话管理器
+│   ├── demand_detector.py          # 需求检测器
+│   ├── context.py                # 上下文管理器
+│   ├── group_chat_handler.py      # 群聊处理器 (v3.1.0+)
+│   ├── group_chat_router.py       # 群聊消息路由 (v3.1.0+)
+│   ├── group_chat_session_manager.py  # 群聊会话管理 (v3.1.0+)
+│   └── demand_service.py         # 需求管理服务 (v3.1.0+)
+├── claude/                        # Claude SDK集成
+│   ├── factory.py                 # Claude会话工厂
+│   └── prompts.py                # 系统提示词
+├── feishu/                        # 飞书集成
+│   ├── client.py                  # 飞书客户端
+│   ├── long_connection_service.py  # 长连接服务
+│   └── topic_service.py          # 话题服务 (v3.1.0+)
+├── models/                        # 数据模型
+├── storage/                       # 存储层
+│   ├── database.py               # 数据库连接
+│   ├── repository.py            # 数据仓库
+│   └── redis_client.py          # Redis客户端
+├── utils/                         # 工具函数
+│   └── logger.py                 # 日志工具
+└── middleware/                    # 中间件
 ```
 
 ## 快速开始
@@ -189,6 +197,27 @@ options = ClaudeAgentOptions(
     add_dirs=["/root/.claude/skills"],  # 允许访问技能参考文件
 )
 ```
+
+## 群聊功能 (v3.1.0+)
+
+### 消息处理规则
+
+| 场景 | 是否处理 | 说明 |
+|------|---------|------|
+| 私聊消息 | ✅ 总是处理 | 直接回复用户 |
+| 群聊话题内消息 | ✅ 总是处理 | 话题内的所有消息都会被处理 |
+| 群聊中@机器人 | ✅ 处理 | 触发问答或需求管理 |
+| 群聊中未@机器人 | ❌ 忽略 | 避免干扰 |
+
+### 群聊使用方式
+
+1. **普通问答模式**：在群聊中@机器人，直接回答问题
+2. **需求管理模式**：@机器人并提及"帮我处理需求"，触发需求卡片
+
+### 会话隔离
+
+- 群聊问答会话：`{user_id}:qa:{chat_id}` - 临时会话，不保持上下文
+- 需求话题会话：`{requirement_id}:{thread_id}` - 持久会话，保持完整上下文
 
 ## 关键实现说明
 

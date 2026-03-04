@@ -107,7 +107,8 @@ class ClaudeSessionManager:
     async def get_or_create_session(
         self,
         session_key: str,
-        resume_session_id: Optional[str] = None
+        resume_session_id: Optional[str] = None,
+        system_prompt: Optional[str] = None
     ) -> ClaudeSDKClient:
         """
         获取或创建会话
@@ -115,6 +116,7 @@ class ClaudeSessionManager:
         Args:
             session_key: 会话键（user_id:root_id）
             resume_session_id: 恢复的会话 ID（可选）
+            system_prompt: 自定义系统提示词（可选）
 
         Returns:
             ClaudeSDKClient 实例
@@ -125,20 +127,21 @@ class ClaudeSessionManager:
                 return self._sessions[session_key]
 
             # 创建新会话
-            client = await self._create_session(session_id=resume_session_id)
+            client = await self._create_session(session_id=resume_session_id, system_prompt=system_prompt)
 
             self._sessions[session_key] = client
             return client
 
     async def _create_session(
         self,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
+        system_prompt: Optional[str] = None
     ) -> ClaudeSDKClient:
         """创建新会话"""
         # 使用本地已配置的 Claude Code
         # 显式设置 cli_path 以避免使用 bundled CLI
         options = ClaudeAgentOptions(
-            system_prompt=get_default_system_prompt(),
+            system_prompt=system_prompt or get_default_system_prompt(),
             permission_mode=settings.CLAUDE_PERMISSION_MODE,
             max_turns=settings.CLAUDE_MAX_TURNS,
             resume=session_id,

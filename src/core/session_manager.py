@@ -7,7 +7,7 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 from claude_agent_sdk import Message, AssistantMessage, ResultMessage, SystemMessage, TextBlock
 
-from src.config import settings, SessionState
+from src.config import settings, ACTIVE, COMPLETED, EXPIRED
 from src.models import Session, WaitingContext
 from src.storage import (
     SessionRepository,
@@ -130,7 +130,7 @@ class SessionManager:
 
             logger.info(f"[SessionManager] 响应处理完成，共收到 {msg_count} 条消息")
             # 标记会话为活跃
-            await self.session_repository.update_state(session_key, SessionState.ACTIVE)
+            await self.session_repository.update_state(session_key, ACTIVE)
 
         except Exception as e:
             from src.utils.logger import logger
@@ -246,7 +246,7 @@ class SessionManager:
                 logger.info(f"使用情况: {msg.usage}")
 
             # 标记会话完成
-            await self.session_repository.update_state(session_key, SessionState.COMPLETED)
+            await self.session_repository.update_state(session_key, COMPLETED)
 
     async def get_session_info(self, session_key: str) -> Optional[dict]:
         """获取会话信息"""

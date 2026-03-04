@@ -6,7 +6,7 @@ from src.storage.redis_client import get_waiting_key
 from src.storage import SessionRepository, WaitingContextRepository
 from src.core.context import ContextManager
 from src.feishu import FeishuClient, CardBuilder
-from src.config import SessionState
+from src.config import EXPIRED
 
 
 class CardHandler:
@@ -44,7 +44,7 @@ class CardHandler:
                 return f"未找到卡片对应的会话"
 
             # 检查会话状态
-            if session.state == SessionState.EXPIRED:
+            if session.state == EXPIRED:
                 return "会话已过期"
 
             session_key = session.session_key

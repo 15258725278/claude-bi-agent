@@ -17,7 +17,10 @@ class MessageEvent(BaseModel):
     open_id: Optional[str] = None
     message_id: str
     content: str
-    root_id: Optional[str] = None
+    chat_id: Optional[str] = None       # 会话ID（私聊或群聊）
+    chat_type: Optional[str] = None      # 会话类型：p2p(私聊) 或 group(群聊)
+    root_id: Optional[str] = None       # 话题根消息ID
+    thread_id: Optional[str] = None      # 话题ID
     raw_event: Optional[dict] = None
 
 
@@ -30,6 +33,7 @@ class CardActionEvent(BaseModel):
     action_tag: Optional[str] = None
     form_values: dict
     raw_event: Optional[dict] = None
+    chat_id: Optional[str] = None  # 群聊ID
 
 
 # 全局事件处理器（从 main.py 注入）
@@ -51,6 +55,8 @@ async def receive_message_event(event: MessageEvent) -> dict:
     """
     logger.info(f"收到消息事件: user_id={event.user_id}, content={event.content[:50]}")
     logger.info(f"[_event_handler] 当前值: {_event_handler}")
+    logger.info(f"[DEBUG] 原始event类型: {type(event)}")
+    logger.info(f"[DEBUG] 原始event内容: {str(event)[:200]}")
 
     # 立即返回"正在处理中"，避免长连接超时
     # 创建后台任务处理实际业务逻辑
@@ -70,17 +76,32 @@ async def _process_message_async(event: MessageEvent) -> None:
         if _event_handler:
             logger.info(f"[_process_message_async] 调用事件处理器...")
             logger.info(f"[_process_message_async] 构建事件数据...")
+
+            # 构建消息对象，包含群聊相关字段
+            message_data = {
+                "sender": {"sender_id": {"user_id": event.user_id, "open_id": event.open_id}},
+                "message_id": event.message_id,
+                "content": event.content
+            }
+
+            # 添加群聊相关字段
+            if event.chat_id:
+                message_data["chat_id"] = event.chat_id
+            if event.chat_type:
+                message_data["chat_type"] = event.chat_type
+            if event.root_id:
+                message_data["root_id"] = event.root_id
+            if event.thread_id:
+                message_data["thread_id"] = event.thread_id
+
             event_data = {
                 "header": {"event_type": "im.message.receive_v1"},
                 "event": {
-                    "message": {
-                        "sender": {"sender_id": {"user_id": event.user_id, "open_id": event.open_id}},
-                        "message_id": event.message_id,
-                        "content": event.content
-                    }
+                    "message": message_data
                 }
             }
-            logger.info(f"[_process_message_async] 调用 _event_handler，user_id={event.user_id}, open_id={event.open_id}")
+
+            logger.info(f"[_process_message_async] 调用 _event_handler，user_id={event.user_id}, open_id={event.open_id}, chat_id={event.chat_id}, chat_type={event.chat_type}")
             result = await _event_handler(event_data)
             logger.info(f"[_process_message_async] 事件处理器返回: {result}")
     except Exception as e:
@@ -138,18 +159,25 @@ async def receive_card_action_event(event: CardActionEvent) -> dict:
     logger.info(f"收到卡片动作事件: user_id={event.user_id}, open_id={event.open_id}, action={event.action_tag}")
 
     try:
-        # 转发给事件处理器（包含 open_id）
+        # 构建事件数据
+        event_data = {
+            "operator": {"user_id": event.user_id, "open_id": event.open_id},
+            "token": event.card_id,
+            "action": {
+                "action_tag": event.action_tag,
+                "form_values": event.form_values
+            }
+        }
+
+        # 添加群聊相关字段
+        if event.chat_id:
+            event_data["chat_id"] = event.chat_id
+
+        # 转发给事件处理器（包含 open_id 和 chat_id）
         if _event_handler:
             await _event_handler({
                 "header": {"event_type": "card.action.trigger"},
-                "event": {
-                    "operator": {"user_id": event.user_id, "open_id": event.open_id},
-                    "token": event.card_id,
-                    "action": {
-                        "action_tag": event.action_tag,
-                        "form_values": event.form_values
-                    }
-                }
+                "event": event_data
             })
     except Exception as e:
         logger.error(f"处理卡片动作事件失败: {e}", exc_info=True)

@@ -54,6 +54,22 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 60  # 1小时
     MAX_SESSIONS_PER_USER: int = 10
 
+    # 群聊配置
+    GROUP_CHAT_ENABLED: bool = True                      # 是否启用群聊功能
+    DEMAND_TRIGGER_KEYWORD: str = "帮我处理需求"          # 需求触发关键词
+
+    # 话题配置
+    THREAD_AUTO_CREATE: bool = True                     # 是否自动创建话题
+    THREAD_TITLE_PREFIX: str = "【需求】"               # 话题标题前缀
+
+    # 需求配置
+    DEMAND_STATUS_PENDING: str = "pending"               # 待处理
+    DEMAND_STATUS_SCOPE_CONFIRMED: str = "scope_confirmed"  # 口径已确认
+    DEMAND_STATUS_ANALYZING: str = "analyzing"           # 分析中
+    DEMAND_STATUS_WAITING_FEEDBACK: str = "waiting_feedback"  # 待反馈
+    DEMAND_STATUS_COMPLETED: str = "completed"           # 已完成
+    DEMAND_STATUS_CANCELLED: str = "cancelled"           # 已取消
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

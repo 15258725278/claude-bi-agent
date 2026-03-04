@@ -4,7 +4,7 @@ Claude消息处理器
 from typing import Optional
 from claude_agent_sdk import Message, AssistantMessage, ResultMessage
 
-from src.config import SessionState
+from src.config import ACTIVE, COMPLETED
 from src.storage.redis_client import get_waiting_key, redis_client
 from src.storage import SessionRepository, WaitingContextRepository
 from src.feishu import FeishuClient
@@ -128,5 +128,5 @@ class ClaudeHandler:
         if not waiting_exists:
             # 更新会话状态
             await self.session_repository.update_state(
-                session_key, SessionState.COMPLETED
+                session_key, COMPLETED
             )
