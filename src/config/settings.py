@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     CLAUDE_MODEL: str = "glm-4.7"
     CLAUDE_MAX_TURNS: int = 50
     CLAUDE_PERMISSION_MODE: str = "acceptEdits"
+    CLAUDE_WORK_DIR: str = "~"  # Claude SDK 工作目录
+    CLAUDE_SKILLS_DIRS: str = "~/.claude/skills,/root/claude-bi-agent/.claude/skills"  # Claude SDK 技能目录（逗号分隔）
 
     # 飞书配置
     FEISHU_APP_ID: str = ""
@@ -43,10 +45,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"
 
     # 新需求判断配置
-    NEW_DEMAND_KEYWORDS: list = [
-        "新需求", "新问题", "重新开始", "reset", "new",
-        "下一个", "另外", "另一个", "另外一个问题"
-    ]
+    NEW_DEMAND_KEYWORDS: str = "新需求,新问题,重新开始,reset,new,下一个,另外,另一个,另外一个问题"
     CONTEXT_SIMILARITY_THRESHOLD: float = 0.7
     TIME_GAP_THRESHOLD: int = 1800  # 30分钟
 
@@ -69,6 +68,17 @@ class Settings(BaseSettings):
     DEMAND_STATUS_WAITING_FEEDBACK: str = "waiting_feedback"  # 待反馈
     DEMAND_STATUS_COMPLETED: str = "completed"           # 已完成
     DEMAND_STATUS_CANCELLED: str = "cancelled"           # 已取消
+
+    # 将逗号分隔的字符串转换为列表的属性
+    @property
+    def skills_dirs_list(self) -> list:
+        """获取技能目录列表"""
+        return [d.strip() for d in self.CLAUDE_SKILLS_DIRS.split(",") if d.strip()]
+
+    @property
+    def new_demand_keywords_list(self) -> list:
+        """获取新需求关键词列表"""
+        return [k.strip() for k in self.NEW_DEMAND_KEYWORDS.split(",") if k.strip()]
 
     class Config:
         env_file = ".env"

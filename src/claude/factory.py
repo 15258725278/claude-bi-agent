@@ -2,6 +2,7 @@
 Claude 会话工厂 - 基于官方文档简化版
 """
 import asyncio
+import os
 import shutil
 from typing import Optional, Dict, Any
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
@@ -44,7 +45,7 @@ class ClaudeSessionFactory:
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
             allowed_tools=["Skill"],  # 启用技能工具
-            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
+            add_dirs=[os.path.expanduser(d) for d in settings.skills_dirs_list]  # Claude SDK 技能目录
         )
 
         # 创建客户端
@@ -81,7 +82,7 @@ class ClaudeSessionFactory:
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
             allowed_tools=["Skill"],  # 启用技能工具
-            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
+            add_dirs=[os.path.expanduser(d) for d in settings.skills_dirs_list]  # Claude SDK 技能目录
         )
 
         # 创建客户端并恢复会话
@@ -149,7 +150,7 @@ class ClaudeSessionManager:
             cli_path=LOCAL_CLAUDE_CLI if LOCAL_CLAUDE_CLI else None,
             setting_sources=["user"],  # 从 ~/.claude/skills/ 加载用户技能
             allowed_tools=["Skill"],  # 启用技能工具
-            add_dirs=["/root/.claude/skills"]  # 允许访问技能参考文件
+            add_dirs=[os.path.expanduser(d) for d in settings.skills_dirs_list]  # Claude SDK 技能目录
         )
 
         # 创建客户端

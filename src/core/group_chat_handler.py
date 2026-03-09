@@ -313,8 +313,9 @@ class GroupChatHandler:
             except Exception as e:
                 logger.warning(f"发送确认表情失败: {e}")
 
-            # 发送消息给Claude
-            await claude_client.query(event.content)
+            # 发送消息给Claude（清理@前缀）
+            content = self._extract_question(event.content)
+            await claude_client.query(content)
 
             # 处理响应
             response_text = ""

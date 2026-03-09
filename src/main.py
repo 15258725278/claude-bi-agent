@@ -1,6 +1,7 @@
 """
 主应用入口 - 支持群聊功能
 """
+import os
 import asyncio
 import json
 from typing import Optional
@@ -21,6 +22,12 @@ from src.middleware import ErrorHandler, LoggingMiddleware
 
 # 初始化日志
 setup_logging()
+
+# 设置 Claude SDK 工作目录
+# 这样可以确保 Claude Code CLI 使用正确的工作目录
+claude_work_dir = os.path.expanduser(settings.CLAUDE_WORK_DIR)
+logger.info(f"Claude SDK 工作目录设置为: {claude_work_dir}")
+os.environ['HOME'] = claude_work_dir
 
 # 全局变量 - 在 startup 中初始化
 feishu_client: Optional[FeishuClient] = None

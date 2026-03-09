@@ -32,7 +32,7 @@ class DemandDetector:
         """
 
         # 1. 检查显式关键词
-        for keyword in settings.NEW_DEMAND_KEYWORDS:
+        for keyword in settings.new_demand_keywords_list:
             if keyword in current_message.lower():
                 return True, f"检测到关键词: {keyword}"
 

@@ -4,7 +4,7 @@
 from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy import select, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession as AsyncSessionType
 from src.models import Session, Message, Card, WaitingContext
 from src.storage.memory_store import redis_client, get_session_key, get_waiting_key
 from src.storage.database import AsyncSessionLocal
@@ -14,11 +14,11 @@ from src.config import settings, ACTIVE, EXPIRED
 class SessionRepository:
     """会话仓库 - 每次方法调用时创建新会话"""
 
-    def __init__(self, db: Optional[AsyncSession] = None):
+    def __init__(self, db: Optional[AsyncSessionType] = None):
         # 支持传入会话对象（向后兼容），但不在构造函数中使用
         pass
 
-    async def _get_session(self) -> AsyncSession:
+    async def _get_session(self) -> AsyncSessionType:
         """获取新的数据库会话"""
         return AsyncSessionLocal()
 
@@ -78,7 +78,7 @@ class SessionRepository:
 
     async def update_state(self, session_key: str, state: str) -> None:
         """更新会话状态"""
-        async with self._get_session() as db:
+        async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(Session).where(Session.session_key == session_key)
             )
@@ -123,11 +123,11 @@ class SessionRepository:
 class MessageRepository:
     """消息仓库 - 每次方法调用时创建新会话"""
 
-    def __init__(self, db: Optional[AsyncSession] = None):
+    def __init__(self, db: Optional[AsyncSessionType] = None):
         # 支持传入会话对象（向后兼容），但不在构造函数中使用
         pass
 
-    async def _get_session(self) -> AsyncSession:
+    async def _get_session(self) -> AsyncSessionType:
         """获取新的数据库会话"""
         return AsyncSessionLocal()
 
